@@ -296,6 +296,12 @@ public class SebeolHangulIME extends InputMethodService implements HangulEngineL
 	@Override
 	public void onStartInput(EditorInfo attribute, boolean restarting) {
 		super.onStartInput(attribute, restarting);
+		// 입력 창을 띄우지 않으면(하드웨어 키보드만 사용) onStartInputView 가 불리지 않으므로 여기서 초기화한다
+		if(!onEvaluateInputViewShown()) {
+			View inputView = onCreateInputView();
+			if(inputView != null) setInputView(inputView);
+			onStartInputView(attribute, restarting);
+		}
 	}
 
 	@Override
@@ -1050,9 +1056,11 @@ public class SebeolHangulIME extends InputMethodService implements HangulEngineL
 
 	@Override
 	public void hideWindow() {
+		boolean wasShown = isInputViewShown();
 		mInputViewManager.closing();
 		super.hideWindow();
-		mDirectInputMode = true;
+		// 입력 창 없이 하드웨어 키보드로 입력 중일 때는 한글 입력을 유지한다
+		if(wasShown) mDirectInputMode = true;
 		hideStatusIcon();
 	}
 
@@ -1118,8 +1126,11 @@ public class SebeolHangulIME extends InputMethodService implements HangulEngineL
 
 	@Override
 	public boolean onEvaluateInputViewShown() {
-		super.onEvaluateInputViewShown();
-		return true;
+		if (super.onEvaluateInputViewShown()) return true;
+		// 하드웨어 키보드 사용 중에는 서브 뷰나 숫자 키보드를 표시할 때만 입력 창을 띄운다
+		SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
+		return pref.getBoolean("hardware_use_subview", true)
+				|| pref.getBoolean("hardware_use_numkeyboard", false);
 	}
 
 	/** @see android.inputmethodservice.InputMethodService#setCandidatesViewShown */
