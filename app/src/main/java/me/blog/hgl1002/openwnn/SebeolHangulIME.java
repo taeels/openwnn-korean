@@ -344,18 +344,19 @@ public class SebeolHangulIME extends InputMethodService implements HangulEngineL
 	@Subscribe
 	public void onKeyUp(KeyUpEvent event) {
 		int key = event.getKeyEvent().getKeyCode();
-		if(!mShiftPressing){
-			if(key == KeyEvent.KEYCODE_SHIFT_LEFT
-					|| key == KeyEvent.KEYCODE_SHIFT_RIGHT){
-				mHardShift = 0;
+		if(key == KeyEvent.KEYCODE_SHIFT_LEFT
+				|| key == KeyEvent.KEYCODE_SHIFT_RIGHT){
+			// 하드웨어 Shift 는 누르고 있는 동안만 적용한다
+			if(mShiftOnCapsLock) {
+				mHardShift = 2;
 				mShiftPressing = true;
-				if(mShiftOnCapsLock) {
-					mHardShift = 2;
-					mShiftOnCapsLock = false;
-				}
-				updateMetaKeyStateDisplay();
-				updateNumKeyboardShiftState();
+				mShiftOnCapsLock = false;
+			} else if(!mCapsLock) {
+				mHardShift = 0;
+				mShiftPressing = false;
 			}
+			updateMetaKeyStateDisplay();
+			updateNumKeyboardShiftState();
 		}
 		if(!mAltPressing) {
 			if(key == KeyEvent.KEYCODE_ALT_LEFT || key == KeyEvent.KEYCODE_ALT_RIGHT){
@@ -558,9 +559,7 @@ public class SebeolHangulIME extends InputMethodService implements HangulEngineL
 
 		case KeyEvent.KEYCODE_SHIFT_LEFT:
 		case KeyEvent.KEYCODE_SHIFT_RIGHT:
-			if (keyEvent.getRepeatCount() == 0) {
-				if (++mHardShift > 2) { mHardShift = 0; }
-			}
+			mHardShift = 1;
 			mShiftPressing = true;
 			if(mCapsLock) {
 				mHardShift = 0;
@@ -1106,9 +1105,9 @@ public class SebeolHangulIME extends InputMethodService implements HangulEngineL
 		boolean ret = mConsumeDownEvent;
 		if(!ret) {
 			ret = super.onKeyUp(keyCode, event);
-		} else {
-			EventBus.getDefault().post(new KeyUpEvent(event));
 		}
+		// Shift 를 단독으로 눌렀다 떼는 경우에도 해제되도록 항상 전달한다
+		EventBus.getDefault().post(new KeyUpEvent(event));
 		return ret;
 	}
 
